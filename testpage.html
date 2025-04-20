@@ -7,18 +7,34 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
   <script>
     window.addEventListener('load', () => {
-      // 加一点延迟，确保所有资源都加载完
+      // 延迟触发，确保所有资源加载完成
       setTimeout(() => {
         const perf = performance.getEntriesByType("navigation")[0];
-        parent.postMessage({
+        const metrics = {
           DNS: perf.domainLookupEnd - perf.domainLookupStart,
           TCP: perf.connectEnd - perf.connectStart,
           TLS: perf.secureConnectionStart ? perf.connectEnd - perf.secureConnectionStart : 0,
           TTFB: perf.responseStart - perf.requestStart,
           DOMLoad: perf.domContentLoadedEventEnd - perf.startTime,
           TotalLoad: (perf.loadEventEnd > 0 ? perf.loadEventEnd - perf.startTime : perf.duration || 0)
-        }, "*");
-      }, 150); // 稍微等一会，保证图片等资源都触发了 load
+        };
+
+        // 获取出口 IP 信息
+        fetch("https://ipinfo.io/json").then(res => res.json()).then(ipinfo => {
+          parent.postMessage({
+            ...metrics,
+            ipinfo: {
+              ip: ipinfo.ip,
+              org: ipinfo.org || "未知",
+              country: ipinfo.country || "未知"
+            }
+          }, "*");
+        }).catch(() => {
+          // 即使 IP 获取失败，也发送测速结果
+          parent.postMessage(metrics, "*");
+        });
+
+      }, 150);
     });
   </script>
   <style>
@@ -29,7 +45,6 @@
 </head>
 <body>
   <h1>测速中，请稍候...</h1>
-  <!-- 更稳定的图片源，确保跨地区可加载 -->
   <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Example.jpg/800px-Example.jpg" alt="测速图片">
 </body>
 </html>
