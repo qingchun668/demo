@@ -23,33 +23,12 @@
     const iframe = document.getElementById("testFrame");
     let metricsList = [];
     let resultsText = "";
+    let ipInfoFromTestPage = null;
 
-    // ✅ 你的测速页面路径（注意：你必须启动 python http.server）
+    // ✅ 改为你的 GitHub Pages 上的测速页面地址
     const TEST_URL = "https://qingchun668.github.io/demo/testpage.html";
 
     const GOOD_ASNS = ["Google", "Cloudflare", "Akamai", "Amazon", "G-Core", "QuadraNet", "Choopa", "HE", "Leaseweb", "OVH"];
-
-    async function getIPInfo() {
-      try {
-        const res = await fetch("https://ipinfo.io/json", { cache: "no-store" });
-        const json = await res.json();
-        let grade = "🟡 普通";
-        for (const good of GOOD_ASNS) {
-          if ((json.org || "").includes(good)) {
-            grade = "🟢 优质";
-            break;
-          }
-        }
-        return {
-          ip: json.ip,
-          org: json.org || "未知",
-          country: json.country || "未知",
-          grade,
-        };
-      } catch {
-        return { ip: "获取失败", org: "-", country: "-", grade: "🔴 异常" };
-      }
-    }
 
     function format(ms) {
       return `${ms.toFixed(2)} ms`;
@@ -75,9 +54,19 @@
         averages[k] = metricsList.reduce((sum, m) => sum + m[k], 0) / metricsList.length;
       });
 
-      getIPInfo().then(ipinfo => {
-        const summary = `
-🌐 当前出口 IP: ${ipinfo.ip}（${ipinfo.country}, ${ipinfo.org}）${ipinfo.grade}
+      const ipinfo = ipInfoFromTestPage || { ip: "未知", org: "-", country: "-", grade: "🟡 未识别" };
+
+      // 评级逻辑
+      let grade = "🟡 普通";
+      for (const good of GOOD_ASNS) {
+        if ((ipinfo.org || "").includes(good)) {
+          grade = "🟢 优质";
+          break;
+        }
+      }
+
+      const summary = `
+🌐 当前出口 IP: ${ipinfo.ip}（${ipinfo.country}, ${ipinfo.org}）${grade}
 
 📊 5 次测速结果（平均值）:
 DNS Lookup: ${format(averages.DNS)}
@@ -87,15 +76,29 @@ TTFB (首包时间): ${format(averages.TTFB)}
 DOM Load: ${format(averages.DOMLoad)}
 Total Load: ${format(averages.TotalLoad)}
 `;
-        output.textContent = summary;
-        resultsText = summary;
-      });
+      output.textContent = summary;
+      resultsText = summary;
     }
 
     window.addEventListener("message", (e) => {
-      // ✅ 重要修复：避免丢弃 0 值的测速结果
-      if (!e.data || typeof e.data.DNS !== "number") return;
-      metricsList.push(e.data);
+      const data = e.data;
+      if (!data || typeof data.TTFB !== "number") return;
+
+      // 接收测速结果
+      metricsList.push({
+        DNS: data.DNS,
+        TCP: data.TCP,
+        TLS: data.TLS,
+        TTFB: data.TTFB,
+        DOMLoad: data.DOMLoad,
+        TotalLoad: data.TotalLoad
+      });
+
+      // 记录出口 IP 信息（仅记录一次）
+      if (data.ipinfo && !ipInfoFromTestPage) {
+        ipInfoFromTestPage = data.ipinfo;
+      }
+
       output.textContent = `已完成 ${metricsList.length} / 5 次测速...`;
 
       if (metricsList.length < 5) {
@@ -105,7 +108,7 @@ Total Load: ${format(averages.TotalLoad)}
       }
     });
 
-    startTest();
+    startTest(); // 首次测速启动
   </script>
 </body>
 </html>
