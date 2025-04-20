@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>OpenClash + HTTP代理测速工具</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #f9f9f9; }
+    pre { background: #fff; padding: 12px; border: 1px solid #ccc; white-space: pre-wrap; }
+    button { padding: 8px 16px; margin-top: 10px; font-size: 16px; cursor: pointer; }
+    iframe { width: 0; height: 0; border: none; }
+  </style>
+</head>
+<body>
+  <h2>🧪 OpenClash + HTTP 代理体感测速（自动 5 次 + 平均）</h2>
+  <p>页面会使用 iframe 自动运行 5 次测速，请稍等几秒...</p>
+  <pre id="output">测试中...</pre>
+  <button onclick="exportResults()">📥 导出结果为 TXT</button>
+
+  <iframe id="testFrame"></iframe>
+
+  <script>
+    const output = document.getElementById("output");
+    const iframe = document.getElementById("testFrame");
+    let metricsList = [];
+    let resultsText = "";
+
+    // ✅ 你的测速页面路径（注意：你必须启动 python http.server）
+    const TEST_URL = "https://qingchun668.github.io/demo/testpage.html";
+
+    const GOOD_ASNS = ["Google", "Cloudflare", "Akamai", "Amazon", "G-Core", "QuadraNet", "Choopa", "HE", "Leaseweb", "OVH"];
+
+    async function getIPInfo() {
+      try {
+        const res = await fetch("https://ipinfo.io/json", { cache: "no-store" });
+        const json = await res.json();
+        let grade = "🟡 普通";
+        for (const good of GOOD_ASNS) {
+          if ((json.org || "").includes(good)) {
+            grade = "🟢 优质";
+            break;
+          }
+        }
+        return {
+          ip: json.ip,
+          org: json.org || "未知",
+          country: json.country || "未知",
+          grade,
+        };
+      } catch {
+        return { ip: "获取失败", org: "-", country: "-", grade: "🔴 异常" };
+      }
+    }
+
+    function format(ms) {
+      return `${ms.toFixed(2)} ms`;
+    }
+
+    function startTest() {
+      iframe.src = `${TEST_URL}?t=${Date.now()}`;
+    }
+
+    function exportResults() {
+      const blob = new Blob([resultsText], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `测速结果_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.txt`;
+      link.click();
+    }
+
+    function showSummary() {
+      const keys = Object.keys(metricsList[0]);
+      const averages = {};
+      keys.forEach(k => {
+        averages[k] = metricsList.reduce((sum, m) => sum + m[k], 0) / metricsList.length;
+      });
+
+      getIPInfo().then(ipinfo => {
+        const summary = `
+🌐 当前出口 IP: ${ipinfo.ip}（${ipinfo.country}, ${ipinfo.org}）${ipinfo.grade}
+
+📊 5 次测速结果（平均值）:
+DNS Lookup: ${format(averages.DNS)}
+TCP Connect: ${format(averages.TCP)}
+TLS Handshake: ${format(averages.TLS)}
+TTFB (首包时间): ${format(averages.TTFB)}
+DOM Load: ${format(averages.DOMLoad)}
+Total Load: ${format(averages.TotalLoad)}
+`;
+        output.textContent = summary;
+        resultsText = summary;
+      });
+    }
+
+    window.addEventListener("message", (e) => {
+      // ✅ 重要修复：避免丢弃 0 值的测速结果
+      if (!e.data || typeof e.data.DNS !== "number") return;
+      metricsList.push(e.data);
+      output.textContent = `已完成 ${metricsList.length} / 5 次测速...`;
+
+      if (metricsList.length < 5) {
+        setTimeout(startTest, 500);
+      } else {
+        showSummary();
+      }
+    });
+
+    startTest();
+  </script>
+</body>
+</html>
