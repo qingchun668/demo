@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>摄像头替换测试</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      background-color: #f7f7f7;
+      text-align: center;
+    }
+    input[type="file"] {
+      margin-top: 40px;
+      font-size: 18px;
+      padding: 10px;
+    }
+    #preview {
+      margin-top: 20px;
+      max-width: 100%;
+      border: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+  <h2>📷 摄像头替换测试</h2>
+  <p>点击下方按钮，调用摄像头拍照（或模拟摄像头）</p>
+
+  <input type="file" accept="image/*;capture=camera" onchange="previewImage(event)">
+
+  <img id="preview" alt="照片预览">
+  
+  <script>
+    function previewImage(event) {
+      const img = document.getElementById('preview');
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = e => img.src = e.target.result;
+        reader.readAsDataURL(file);
+      }
+    }
+  </script>
+</body>
+</html>
