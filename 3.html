@@ -2,23 +2,51 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>整合 whoer 与 Demo 页面</title>
+  <title>三栏平铺 + 懒加载</title>
   <style>
-    body {
+    html, body {
       margin: 0;
-      display: flex;
-      height: 100vh;
+      padding: 0;
+      height: 100%;
       overflow: hidden;
+      font-family: sans-serif;
+    }
+    .container {
+      display: flex;
+      width: 100%;
+      height: 100vh;
     }
     iframe {
-      width: 50%;
-      height: 100%;
+      flex: 1;
       border: none;
+      height: 100%;
+    }
+    .loading {
+      text-align: center;
+      font-size: 16px;
+      color: #666;
+      padding-top: 20px;
     }
   </style>
 </head>
 <body>
-  <iframe src="https://whoer.net"></iframe>
-  <iframe src="https://qingchun668.github.io/demo/2.html"></iframe>
+  <div class="container">
+    <iframe id="frame1" srcdoc="<p class='loading'>加载 whoer.net 中...</p>"></iframe>
+    <iframe id="frame2" srcdoc="<p class='loading'>加载测速页面中...</p>"></iframe>
+    <iframe id="frame3" srcdoc="<p class='loading'>加载 ipdata.co 中...</p>"></iframe>
+  </div>
+
+  <script>
+    // 延迟加载 iframe，避免卡顿
+    window.addEventListener('load', () => {
+      document.getElementById('frame1').src = "https://whoer.net/";
+      setTimeout(() => {
+        document.getElementById('frame2').src = "https://qingchun668.github.io/demo/2.html";
+      }, 1500);
+      setTimeout(() => {
+        document.getElementById('frame3').src = "https://ipdata.co/";
+      }, 3000);
+    });
+  </script>
 </body>
 </html>
