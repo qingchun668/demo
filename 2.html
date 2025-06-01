@@ -45,6 +45,49 @@
     }
     iframe { width: 0; height: 0; border: none; }
   </style>
+
+<script>
+function queryIPData() {
+  const request = new XMLHttpRequest();
+  request.open('GET', 'https://api.ipdata.co/?api-key=2d34f831e30f7fbfde38172435687fb9b62a3b1a5ab03e422fbeea40'); // 替换 APIKEY
+  request.setRequestHeader('Accept', 'application/json');
+
+  request.onreadystatechange = function () {
+    if (this.readyState === 4 && this.status === 200) {
+      try {
+        const data = JSON.parse(this.responseText);
+        const ipInfoBox = document.createElement("div");
+        ipInfoBox.className = "summary-box";
+        ipInfoBox.innerHTML = `
+          <h3>🌍 当前 IP 信息（来自 ipdata.co）</h3>
+          <ul>
+            <li><strong>IP：</strong>${data.ip}</li>
+            <li><strong>国家/地区：</strong>${data.country_name} (${data.country_code})</li>
+            <li><strong>地区：</strong>${data.region} - ${data.city}</li>
+            <li><strong>ISP：</strong>${data.asn.name}</li>
+            <li><strong>ASN：</strong>${data.asn.asn}</li>
+            <li><strong>组织：</strong>${data.organisation}</li>
+            <li><strong>Trust Score：</strong>${data.trust_score ?? '未知'}</li>
+          </ul>
+        `;
+        document.body.insertBefore(ipInfoBox, document.body.firstChild);
+      } catch (e) {
+        console.error("IPData 响应解析失败", e);
+      }
+    }
+  };
+
+  request.send();
+}
+
+// 页面加载后执行
+queryIPData();
+</script>
+
+
+
+
+  
 </head>
 <body>
   <h2>🧪 OpenClash + HTTP 代理测速工具</h2>
