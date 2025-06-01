@@ -4,27 +4,128 @@
   <meta charset="UTF-8">
   <title>OpenClash + HTTP代理测速工具</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; background: #f9f9f9; }
-    pre { background: #fff; padding: 12px; border: 1px solid #ccc; white-space: pre-wrap; }
-    button { padding: 8px 16px; margin-top: 10px; font-size: 16px; cursor: pointer; }
-    iframe { width: 0; height: 0; border: none; }
+    body {
+      font-family: "Segoe UI", sans-serif;
+      padding: 20px;
+      background: #eef1f5;
+      margin: 0;
+      color: #333;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: auto;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      padding: 30px;
+    }
+
+    h2 {
+      font-size: 24px;
+      margin-bottom: 10px;
+    }
+
+    p {
+      color: #666;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid #ddd;
+      text-align: center;
+    }
+
+    th {
+      background-color: #f6f8fa;
+      font-weight: 600;
+    }
+
+    tr:nth-child(even) {
+      background-color: #fafafa;
+    }
+
+    tr:hover {
+      background-color: #f0f7ff;
+    }
+
+    .bold {
+      font-weight: bold;
+      color: #2c3e50;
+    }
+
+    button {
+      padding: 10px 20px;
+      background: #3498db;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 15px;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background: #2980b9;
+    }
+
+    pre {
+      background: #f4f4f4;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 15px;
+      overflow-x: auto;
+    }
+
+    iframe {
+      display: none;
+    }
+
+    .summary {
+      margin-top: 25px;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: 20px;
+      }
+
+      table, th, td {
+        font-size: 14px;
+      }
+    }
   </style>
 </head>
 <body>
-  <h2>🧪 OpenClash + HTTP 代理测速（网页加载速度）</h2>
-  <p>页面将自动进行测速，请稍等几秒...</p>
-  <pre id="output">测试中...</pre>
-  <button onclick="resetTest()">🔄 重新检测</button>
-  <iframe id="testFrame"></iframe>
+  <div class="container">
+    <h2>🧪 OpenClash + HTTP 代理网页加载测速</h2>
+    <p>页面将自动进行 5 次测速，请稍等几秒...</p>
+
+    <pre id="output">测试中...</pre>
+    <button onclick="resetTest()">🔄 重新检测</button>
+
+    <iframe id="testFrame"></iframe>
+
+    <div id="summary" class="summary"></div>
+  </div>
+
   <script>
     const output = document.getElementById("output");
     const iframe = document.getElementById("testFrame");
+    const summaryDiv = document.getElementById("summary");
     let metricsList = [];
-    let resultsText = "";
     let ipInfoFromTestPage = null;
-    // ✅ 改为你的 GitHub Pages 上的测速页面地址
     const TEST_URL = "https://qingchun668.github.io/demo/testpage.html";
-    
+
     function format(ms) {
       return `${ms.toFixed(2)} ms`;
     }
@@ -34,39 +135,65 @@
     }
 
     function resetTest() {
-      // 清空之前的数据，重新开始测速
       metricsList = [];
+      summaryDiv.innerHTML = '';
       output.textContent = '正在重新开始测速...';
       startTest();
     }
 
     function showSummary() {
       const averageTotalLoad = metricsList.reduce((sum, m) => sum + m.TotalLoad, 0) / metricsList.length;
-      let summary = `当前出口 IP: ${ipInfoFromTestPage ? ipInfoFromTestPage.ip : "未知"}\n`;
-      summary += `5次测速结果:\n`;
+
+      let ipInfo = ipInfoFromTestPage ? `
+        <div class="bold" style="margin-bottom:10px;">
+          🌐 当前出口 IP: ${ipInfoFromTestPage.ip}<br>
+          🗺️ 国家: ${ipInfoFromTestPage.country} | 城市: ${ipInfoFromTestPage.city}<br>
+          🏢 ISP: ${ipInfoFromTestPage.org}
+        </div>
+      ` : '<div class="bold">🌐 当前出口 IP: 未知</div>';
+
+      let tableHTML = ipInfo + `
+        <table>
+          <thead>
+            <tr>
+              <th>测试次数</th>
+              <th>网页加载总时间</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
       metricsList.forEach((metric, index) => {
-        summary += `第${index + 1}次测速 - 网页加载总时间: ${format(metric.TotalLoad)}\n`;
+        tableHTML += `
+          <tr>
+            <td>第 ${index + 1} 次</td>
+            <td>${format(metric.TotalLoad)}</td>
+          </tr>
+        `;
       });
-      summary += `\n平均网页加载总时间: ${format(averageTotalLoad)}`;
-      
-      output.textContent = summary;
-      resultsText = summary;
+
+      tableHTML += `
+          </tbody>
+        </table>
+        <h3 class="bold" style="margin-top: 20px;">📊 平均加载时间：${format(averageTotalLoad)}</h3>
+      `;
+
+      summaryDiv.innerHTML = tableHTML;
+      output.textContent = '测速完成！';
     }
 
     window.addEventListener("message", (e) => {
       const data = e.data;
       if (!data || typeof data.TotalLoad !== "number") return;
-      // 接收测速结果
-      metricsList.push({
-        TotalLoad: data.TotalLoad
-      });
 
-      // 记录出口 IP 信息（仅记录一次）
+      metricsList.push({ TotalLoad: data.TotalLoad });
+
       if (data.ipinfo && !ipInfoFromTestPage) {
         ipInfoFromTestPage = data.ipinfo;
       }
 
       output.textContent = `已完成 ${metricsList.length} / 5 次测速...`;
+
       if (metricsList.length < 5) {
         setTimeout(startTest, 500);
       } else {
@@ -74,7 +201,7 @@
       }
     });
 
-    startTest(); // 首次测速启动
+    startTest(); // 自动开始测速
   </script>
 </body>
 </html>
