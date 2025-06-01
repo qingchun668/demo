@@ -11,25 +11,20 @@
   </style>
 </head>
 <body>
-  <h2>🧪 OpenClash + HTTP 代理体感测速（自动 5 次 + 平均）</h2>
-  <p>页面会使用 iframe 自动运行 5 次测速，请稍等几秒...</p>
+  <h2>🧪 OpenClash + HTTP 代理测速（网页加载速度）</h2>
+  <p>页面将自动进行测速，请稍等几秒...</p>
   <pre id="output">测试中...</pre>
-  <button onclick="exportResults()">📥 导出结果为 TXT</button>
-
+  <button onclick="resetTest()">🔄 重新检测</button>
   <iframe id="testFrame"></iframe>
-
   <script>
     const output = document.getElementById("output");
     const iframe = document.getElementById("testFrame");
     let metricsList = [];
     let resultsText = "";
     let ipInfoFromTestPage = null;
-
     // ✅ 改为你的 GitHub Pages 上的测速页面地址
     const TEST_URL = "https://qingchun668.github.io/demo/testpage.html";
-
-    const GOOD_ASNS = ["Google", "Cloudflare", "Akamai", "Amazon", "G-Core", "QuadraNet", "Choopa", "HE", "Leaseweb", "OVH"];
-
+    
     function format(ms) {
       return `${ms.toFixed(2)} ms`;
     }
@@ -38,59 +33,31 @@
       iframe.src = `${TEST_URL}?t=${Date.now()}`;
     }
 
-    function exportResults() {
-      const blob = new Blob([resultsText], { type: "text/plain;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `测速结果_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.txt`;
-      link.click();
+    function resetTest() {
+      // 清空之前的数据，重新开始测速
+      metricsList = [];
+      output.textContent = '正在重新开始测速...';
+      startTest();
     }
 
     function showSummary() {
-      const keys = Object.keys(metricsList[0]);
-      const averages = {};
-      keys.forEach(k => {
-        averages[k] = metricsList.reduce((sum, m) => sum + m[k], 0) / metricsList.length;
+      const averageTotalLoad = metricsList.reduce((sum, m) => sum + m.TotalLoad, 0) / metricsList.length;
+      let summary = `当前出口 IP: ${ipInfoFromTestPage ? ipInfoFromTestPage.ip : "未知"}\n`;
+      summary += `5次测速结果:\n`;
+      metricsList.forEach((metric, index) => {
+        summary += `第${index + 1}次测速 - 网页加载总时间: ${format(metric.TotalLoad)}\n`;
       });
-
-      const ipinfo = ipInfoFromTestPage || { ip: "未知", org: "-", country: "-", grade: "🟡 未识别" };
-
-      // 评级逻辑
-      let grade = "🟡 普通";
-      for (const good of GOOD_ASNS) {
-        if ((ipinfo.org || "").includes(good)) {
-          grade = "🟢 优质";
-          break;
-        }
-      }
-
-      const summary = `
-🌐 当前出口 IP: ${ipinfo.ip}（${ipinfo.country}, ${ipinfo.org}）${grade}
-
-📊 5 次测速结果（平均值）:
-DNS Lookup: ${format(averages.DNS)}
-TCP Connect: ${format(averages.TCP)}
-TLS Handshake: ${format(averages.TLS)}
-TTFB (首包时间): ${format(averages.TTFB)}
-DOM Load: ${format(averages.DOMLoad)}
-Total Load: ${format(averages.TotalLoad)}
-`;
+      summary += `\n平均网页加载总时间: ${format(averageTotalLoad)}`;
+      
       output.textContent = summary;
       resultsText = summary;
     }
 
     window.addEventListener("message", (e) => {
       const data = e.data;
-      if (!data || typeof data.TTFB !== "number") return;
-
+      if (!data || typeof data.TotalLoad !== "number") return;
       // 接收测速结果
       metricsList.push({
-        DNS: data.DNS,
-        TCP: data.TCP,
-        TLS: data.TLS,
-        TTFB: data.TTFB,
-        DOMLoad: data.DOMLoad,
         TotalLoad: data.TotalLoad
       });
 
@@ -100,7 +67,6 @@ Total Load: ${format(averages.TotalLoad)}
       }
 
       output.textContent = `已完成 ${metricsList.length} / 5 次测速...`;
-
       if (metricsList.length < 5) {
         setTimeout(startTest, 500);
       } else {
