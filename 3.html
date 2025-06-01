@@ -2,51 +2,73 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>三栏平铺 + 懒加载</title>
+  <title>三栏 IP 测试工具</title>
   <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      display: flex;
+      height: 100vh;
       overflow: hidden;
       font-family: sans-serif;
     }
-    .container {
-      display: flex;
-      width: 100%;
-      height: 100vh;
+    .column {
+      flex: 1;
+      border-left: 1px solid #ddd;
+      position: relative;
+    }
+    .column:first-child {
+      border-left: none;
     }
     iframe {
-      flex: 1;
-      border: none;
+      width: 100%;
       height: 100%;
+      border: none;
+      display: none;
     }
-    .loading {
-      text-align: center;
-      font-size: 16px;
-      color: #666;
-      padding-top: 20px;
+    .loader {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      color: #888;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <iframe id="frame1" srcdoc="<p class='loading'>加载 whoer.net 中...</p>"></iframe>
-    <iframe id="frame2" srcdoc="<p class='loading'>加载测速页面中...</p>"></iframe>
-    <iframe id="frame3" srcdoc="<p class='loading'>加载 ipdata.co 中...</p>"></iframe>
+  <div class="column" id="col1">
+    <div class="loader">加载 whoer.net 中...</div>
+    <iframe data-src="https://whoer.net"></iframe>
+  </div>
+  <div class="column" id="col2">
+    <div class="loader">加载测速页面中...</div>
+    <iframe data-src="https://qingchun668.github.io/demo/2.html"></iframe>
+  </div>
+  <div class="column" id="col3">
+    <div class="loader">加载 ipdata.co 中...</div>
+    <iframe data-src="https://ipdata.co/"></iframe>
   </div>
 
   <script>
-    // 延迟加载 iframe，避免卡顿
-    window.addEventListener('load', () => {
-      document.getElementById('frame1').src = "https://whoer.net/";
-      setTimeout(() => {
-        document.getElementById('frame2').src = "https://qingchun668.github.io/demo/2.html";
-      }, 1500);
-      setTimeout(() => {
-        document.getElementById('frame3').src = "https://ipdata.co/";
-      }, 3000);
-    });
+    function lazyLoadIframe(columnId) {
+      const col = document.getElementById(columnId);
+      const iframe = col.querySelector("iframe");
+      const loader = col.querySelector(".loader");
+
+      iframe.onload = () => {
+        loader.style.display = "none";
+        iframe.style.display = "block";
+      };
+
+      iframe.onerror = () => {
+        loader.textContent = "❌ 加载失败";
+      };
+
+      iframe.src = iframe.getAttribute("data-src");
+    }
+
+    // 懒加载处理
+    lazyLoadIframe("col1");
+    setTimeout(() => lazyLoadIframe("col2"), 800);
+    setTimeout(() => lazyLoadIframe("col3"), 1600);
   </script>
 </body>
 </html>
