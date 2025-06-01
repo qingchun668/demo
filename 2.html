@@ -4,119 +4,56 @@
   <meta charset="UTF-8">
   <title>OpenClash + HTTP代理测速工具</title>
   <style>
-    body {
-      font-family: "Segoe UI", sans-serif;
-      padding: 20px;
-      background: #eef1f5;
-      margin: 0;
-      color: #333;
-    }
-
-    .container {
-      max-width: 900px;
-      margin: auto;
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-      padding: 30px;
-    }
-
-    h2 {
-      font-size: 24px;
-      margin-bottom: 10px;
-    }
-
-    p {
-      color: #666;
-    }
-
+    body { font-family: sans-serif; padding: 20px; background: #f7f9fc; color: #333; }
     table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 20px;
-      border-radius: 6px;
-      overflow: hidden;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
-
     th, td {
-      padding: 12px 14px;
-      border-bottom: 1px solid #ddd;
+      padding: 12px;
+      border: 1px solid #e0e0e0;
       text-align: center;
     }
-
     th {
-      background-color: #f6f8fa;
-      font-weight: 600;
+      background-color: #eaf3ff;
     }
-
-    tr:nth-child(even) {
-      background-color: #fafafa;
+    h2, h3 {
+      margin: 10px 0;
     }
-
-    tr:hover {
-      background-color: #f0f7ff;
-    }
-
-    .bold {
-      font-weight: bold;
-      color: #2c3e50;
-    }
-
     button {
-      padding: 10px 20px;
-      background: #3498db;
+      padding: 8px 16px;
+      margin-top: 15px;
+      font-size: 16px;
+      background: #007BFF;
       color: white;
       border: none;
       border-radius: 6px;
-      font-size: 16px;
       cursor: pointer;
-      margin-top: 15px;
-      transition: background 0.3s;
     }
-
     button:hover {
-      background: #2980b9;
+      background-color: #0056b3;
     }
-
-    pre {
-      background: #f4f4f4;
-      padding: 12px;
-      border-radius: 6px;
-      font-size: 15px;
-      overflow-x: auto;
+    .bold { font-weight: bold; }
+    .summary-box {
+      background: #fff;
+      padding: 16px;
+      margin-top: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
-
-    iframe {
-      display: none;
-    }
-
-    .summary {
-      margin-top: 25px;
-    }
-
-    @media (max-width: 600px) {
-      .container {
-        padding: 20px;
-      }
-
-      table, th, td {
-        font-size: 14px;
-      }
-    }
+    iframe { width: 0; height: 0; border: none; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h2>🧪 OpenClash + HTTP 代理网页加载测速</h2>
-    <p>页面将自动进行 5 次测速，请稍等几秒...</p>
+  <h2>🧪 OpenClash + HTTP 代理测速工具</h2>
+  <p>页面将自动进行测速，请稍等几秒...</p>
+  <pre id="output">测试中...</pre>
+  <button onclick="resetTest()">🔄 重新检测</button>
+  <iframe id="testFrame"></iframe>
 
-    <pre id="output">测试中...</pre>
-    <button onclick="resetTest()">🔄 重新检测</button>
-
-    <iframe id="testFrame"></iframe>
-
-    <div id="summary" class="summary"></div>
-  </div>
+  <div id="summary" class="summary-box"></div>
 
   <script>
     const output = document.getElementById("output");
@@ -128,6 +65,19 @@
 
     function format(ms) {
       return `${ms.toFixed(2)} ms`;
+    }
+
+    function median(values) {
+      if (values.length === 0) return 0;
+      values.sort((a, b) => a - b);
+      const mid = Math.floor(values.length / 2);
+      return values.length % 2 === 0 ? (values[mid - 1] + values[mid]) / 2 : values[mid];
+    }
+
+    function stddev(values) {
+      const avg = values.reduce((a, b) => a + b) / values.length;
+      const squareDiffs = values.map(x => (x - avg) ** 2);
+      return Math.sqrt(squareDiffs.reduce((a, b) => a + b) / values.length);
     }
 
     function startTest() {
@@ -142,50 +92,33 @@
     }
 
     function showSummary() {
-      const averageTotalLoad = metricsList.reduce((sum, m) => sum + m.TotalLoad, 0) / metricsList.length;
+      const totalTimes = metricsList.map(m => m.TotalLoad);
+      const avg = totalTimes.reduce((sum, t) => sum + t, 0) / totalTimes.length;
+      const med = median(totalTimes);
+      const dev = stddev(totalTimes);
 
-      let ipInfo = ipInfoFromTestPage ? `
-        <div class="bold" style="margin-bottom:10px;">
-          🌐 当前出口 IP: ${ipInfoFromTestPage.ip}<br>
-          🗺️ 国家: ${ipInfoFromTestPage.country} | 城市: ${ipInfoFromTestPage.city}<br>
-          🏢 ISP: ${ipInfoFromTestPage.org}
-        </div>
-      ` : '<div class="bold">🌐 当前出口 IP: 未知</div>';
+      let html = `<h3>🌐 当前出口 IP: ${ipInfoFromTestPage ? ipInfoFromTestPage.ip : "未知"}</h3>`;
+      html += `<table><thead><tr><th>测试次数</th><th>网页加载总时间</th></tr></thead><tbody>`;
 
-      let tableHTML = ipInfo + `
-        <table>
-          <thead>
-            <tr>
-              <th>测试次数</th>
-              <th>网页加载总时间</th>
-            </tr>
-          </thead>
-          <tbody>
-      `;
-
-      metricsList.forEach((metric, index) => {
-        tableHTML += `
-          <tr>
-            <td>第 ${index + 1} 次</td>
-            <td>${format(metric.TotalLoad)}</td>
-          </tr>
-        `;
+      totalTimes.forEach((t, i) => {
+        html += `<tr><td>第 ${i + 1} 次</td><td>${format(t)}</td></tr>`;
       });
 
-      tableHTML += `
-          </tbody>
-        </table>
-        <h3 class="bold" style="margin-top: 20px;">📊 平均加载时间：${format(averageTotalLoad)}</h3>
-      `;
+      html += `</tbody></table>`;
+      html += `<h3 class="bold">📊 统计结果：</h3>
+        <ul>
+          <li>平均加载时间：<b>${format(avg)}</b></li>
+          <li>中位加载时间（推荐参考）：<b>${format(med)}</b></li>
+          <li>标准差（波动性）：<b>${format(dev)}</b></li>
+        </ul>`;
 
-      summaryDiv.innerHTML = tableHTML;
+      summaryDiv.innerHTML = html;
       output.textContent = '测速完成！';
     }
 
     window.addEventListener("message", (e) => {
       const data = e.data;
       if (!data || typeof data.TotalLoad !== "number") return;
-
       metricsList.push({ TotalLoad: data.TotalLoad });
 
       if (data.ipinfo && !ipInfoFromTestPage) {
@@ -193,7 +126,6 @@
       }
 
       output.textContent = `已完成 ${metricsList.length} / 5 次测速...`;
-
       if (metricsList.length < 5) {
         setTimeout(startTest, 500);
       } else {
@@ -201,7 +133,7 @@
       }
     });
 
-    startTest(); // 自动开始测速
+    startTest();
   </script>
 </body>
 </html>
